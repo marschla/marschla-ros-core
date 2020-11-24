@@ -98,6 +98,7 @@ class ControllerNode(DTROS):
         stoptime = 28.0
         t0 = time.time()
         i=0
+        keyboard_control_flag = False
         
         while  not rospy.is_shutdown():
 
@@ -147,13 +148,17 @@ class ControllerNode(DTROS):
                 #rospy.loginfo('phi: %s' % message3)
                 #rospy.loginfo('dt: %s' % message4)
                 #rospy.loginfo("state: %s" % message5)
+
+                keyboard_control_flag = True
             
                 rate.sleep()
             
-            car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = 0
-            car_cmd_msg.vel_right = 0
-            self.pub_car_cmd.publish(car_cmd_msg)
+            if keyboard_control_flag == True:
+                car_cmd_msg.header.stamp = rospy.get_rostime()
+                car_cmd_msg.vel_left = 0
+                car_cmd_msg.vel_right = 0
+                self.pub_car_cmd.publish(car_cmd_msg)
+                keyboard_control_flag = False
 
             rate.sleep()
 
