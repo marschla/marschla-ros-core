@@ -100,50 +100,61 @@ class ControllerNode(DTROS):
         i=0
         
         while  not rospy.is_shutdown():
-            #computing dt for I-part of controller
-            told = tnew
-            tnew = time.time()
-            dt = tnew-told
+
+            while self.state_var == "LANE_FOLLOWING":
+                #computing dt for I-part of controller
+                told = tnew
+                tnew = time.time()
+                dt = tnew-told
             
-            '''
-            #stop programm once a certain time has passed (for experiments, not meant for normal usage)
-            if tnew-t0>stoptime:
-                rospy.logwarn("Time's up!!!")
-                rospy.signal_shutdown("Ende gut, alles gut")
-                self.custom_shutdown()
-            '''
+                '''
+                #stop programm once a certain time has passed (for experiments, not meant for normal usage)
+                if tnew-t0>stoptime:
+                    rospy.logwarn("Time's up!!!")
+                    rospy.signal_shutdown("Ende gut, alles gut")
+                    self.custom_shutdown()
+                '''
             
 
-            #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
-            self.omega = self.getomega(self.dist,self.tist,dt)
+                #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
+                self.omega = self.getomega(self.dist,self.tist,dt)
 
-            #car_cmd_msg.omega = self.omega
-            #car_cmd_msg.v = self.vref
-            #car_cmd_msg.header = self.header
+                #car_cmd_msg.omega = self.omega
+                #car_cmd_msg.v = self.vref
+                #car_cmd_msg.header = self.header
 
-            #def. motor commands that will be published
+                #def. motor commands that will be published
+                car_cmd_msg.header.stamp = rospy.get_rostime()
+                car_cmd_msg.vel_left = self.vref + self.L * self.omega
+                car_cmd_msg.vel_right = self.vref - self.L * self.omega
+
+                self.pub_car_cmd.publish(car_cmd_msg)
+
+                #rospy.loginfo("HAllo")
+
+                #printing messages to verify that program is working correctly 
+                #i.ei if dist and tist are always zero, then there is probably no data from the lane_pose
+                message1 = self.dist
+                message2 = self.omega
+                message3 = self.tist
+                message4 = dt
+
+                #rospy.loginfo(tnew-t0)
+
+                #message5 = self.state_var
+
+                #rospy.loginfo('d: %s' % message1)
+                #rospy.loginfo('phi: %s' % message3)
+                #rospy.loginfo('dt: %s' % message4)
+                #rospy.loginfo("state: %s" % message5)
+            
+                rate.sleep()
+            
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = self.vref + self.L * self.omega
-            car_cmd_msg.vel_right = self.vref - self.L * self.omega
-
+            car_cmd_msg.vel_left = 0
+            car_cmd_msg.vel_right = 0
             self.pub_car_cmd.publish(car_cmd_msg)
 
-            #printing messages to verify that program is working correctly 
-            #i.ei if dist and tist are always zero, then there is probably no data from the lane_pose
-            message1 = self.dist
-            message2 = self.omega
-            message3 = self.tist
-            message4 = dt
-
-            #rospy.loginfo(tnew-t0)
-
-            #message5 = self.state_var
-
-            #rospy.loginfo('d: %s' % message1)
-            #rospy.loginfo('phi: %s' % message3)
-            #rospy.loginfo('dt: %s' % message4)
-            #rospy.loginfo("state: %s" % message5)
-            
             rate.sleep()
 
     #shutdown procedure, stopping motor movement etc.
