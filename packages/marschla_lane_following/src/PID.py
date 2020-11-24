@@ -4,7 +4,7 @@ import os
 import rospy
 from duckietown.dtros import DTROS, NodeType, TopicType
 from std_msgs.msg import String, Bool
-from duckietown_msgs.msg import Twist2DStamped, WheelsCmdStamped, LanePose
+from duckietown_msgs.msg import Twist2DStamped, WheelsCmdStamped, LanePose, FSMState
 import numpy as np
 import time
 
@@ -19,7 +19,8 @@ class ControllerNode(DTROS):
 
         #Subscriber
         self.sub_lane_reading = rospy.Subscriber("marschla/lane_filter_node/lane_pose", LanePose, self.control, "lane_filter", queue_size=1)
-        
+        self.sub_fsm_state = rospy.Subscriber("marschla/fsm_node/mode", FSMState, self.state, queue_size=1)    
+    
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
 
@@ -39,6 +40,8 @@ class ControllerNode(DTROS):
         self.L = 0.05
 
         self.header = 0
+
+        self.state_var = "none"
 
     def getomega(self,dist,tist,dt):
         #parameters for PID control
@@ -94,6 +97,7 @@ class ControllerNode(DTROS):
         tnew = time.time()
         stoptime = 28.0
         t0 = time.time()
+        i=0
         
         while  not rospy.is_shutdown():
             #computing dt for I-part of controller
@@ -125,7 +129,7 @@ class ControllerNode(DTROS):
             self.pub_car_cmd.publish(car_cmd_msg)
 
             #printing messages to verify that program is working correctly 
-            #i.ei if dist and tist are always zero, then there is probably no data from the lan_pose
+            #i.ei if dist and tist are always zero, then there is probably no data from the lane_pose
             message1 = self.dist
             message2 = self.omega
             message3 = self.tist
@@ -133,12 +137,12 @@ class ControllerNode(DTROS):
 
             #rospy.loginfo(tnew-t0)
 
-            #message5 = time.time()-t0
+            #message5 = self.state_var
 
             #rospy.loginfo('d: %s' % message1)
             #rospy.loginfo('phi: %s' % message3)
             #rospy.loginfo('dt: %s' % message4)
-            #rospy.loginfo("time: %s" % message5)
+            #rospy.loginfo("state: %s" % message5)
             
             rate.sleep()
 
@@ -161,6 +165,12 @@ class ControllerNode(DTROS):
         #self.header = pose.header
         message = pose.d
         rospy.loginfo('d =  %s' % message)
+
+    def state(self,state_msg):
+        self.state_var = state_msg.state
+        rospy.loginfo("state message received")
+
+
 
 if __name__ == "__main__":
     # Initialize the node
