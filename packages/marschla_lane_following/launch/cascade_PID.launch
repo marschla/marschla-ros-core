@@ -1,0 +1,25 @@
+<launch>
+	<arg name="pkg_name" default="marschla_lane_following"/>
+	<arg name="node_name" default="cascade_PID"/>
+	<arg name="veh" default="$(env VEHICLE_NAME)"/>
+
+	<include file="$(find duckietown_demos)/launch/master.launch">
+		<arg name="veh" value="$(arg veh)"/>
+		<arg name="demo_name" value="lane_following"/>
+		<arg name="visualization" value="true"/>
+
+		<arg name="param_file_name" value="default"/>
+
+		<arg name="fsm" value="true"/>
+		<arg name="/fsm/logic_gate" value="false"/>
+
+		<arg name="anti_instagram" value="true"/>
+
+		<arg name="lane_following" value="true"/>
+		<arg name="/lane_following/line_detection" value="true"/>
+		<arg name="/lane_following/ground_projection" value="true"/>
+		<arg name="/lane_following/lane_filter" value="true"/>
+	</include>
+
+	<node pkg="$(arg pkg_name)" type="$(arg node_name).py" name="cascade_PID" output="screen"></node>
+</launch>
