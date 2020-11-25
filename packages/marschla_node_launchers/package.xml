@@ -1,0 +1,8 @@
+<package>
+<name>marschla_node_launchers</name>
+<version>0.1.0</version>
+<description>Package to launch the dt-core nodes needed for my lane_following controllers, but without launching the controller.</description>
+<maintainer email="marschla@student.ethz.ch">Marco Schlatter</maintainer>
+<license>None</license>
+<buildtool_depend>catkin</buildtool_depend>
+</package>
