@@ -21,8 +21,7 @@
 		<arg name="lane_following" value="true"/>
 		<arg name="/lane_following/line_detection" value="true"/>
 		<arg name="/lane_following/ground_projection" value="true"/>
+		<arg name="/lane_following/lane_filter" value="true"/>
 		
 	</include>
-
-	<node pkg="$(arg pkg_name)" type="$(arg node_name).py" name="Pure_Pursuit" output="screen"></node>
 </launch>

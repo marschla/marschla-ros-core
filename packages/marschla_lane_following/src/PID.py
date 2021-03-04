@@ -15,11 +15,13 @@ class ControllerNode(DTROS):
         super(ControllerNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
 
         #Publisher
-        self.pub_car_cmd = rospy.Publisher("marschla/wheels_driver_node/wheels_cmd", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
+        #self.pub_car_cmd = rospy.Publisher("marschla/wheels_driver_node/wheels_cmd", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
+        #self.pub_car_cmd = rospy.Publisher("marschla/lane_controller_node/car_cmd", Twist2DStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
+        self.pub_car_cmd = rospy.Publisher("marschla/wheels_driver_node/wheels_cmd", WheelsCmdStamped, queue_size=1,dt_topic_type=TopicType.CONTROL)
 
         #Subscriber
-        self.sub_lane_reading = rospy.Subscriber("marschla/lane_filter_node/lane_pose", LanePose, self.control, "lane_filter", queue_size=1)
-        self.sub_fsm_state = rospy.Subscriber("marschla/fsm_node/mode", FSMState, self.state, queue_size=1)    
+        self.sub_lane_reading = rospy.Subscriber("marschla/lane_filter_node/lane_pose", LanePose, self.control, "lane_filter", queue_size=1,buff_size=(20*(1024**2)))
+        #self.sub_fsm_state = rospy.Subscriber("marcobot/fsm_node/mode", FSMState, self.state, queue_size=1)    
     
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
@@ -46,8 +48,8 @@ class ControllerNode(DTROS):
     def getomega(self,dist,tist,dt):
         #parameters for PID control
         k_p = 4.0
-        k_i = 0.1
-        k_d = 0.5
+        k_i = 0.0
+        k_d = 0.0
         #saturation params
         sati = 1.0
         satd = 1.0
@@ -81,6 +83,8 @@ class ControllerNode(DTROS):
         
         #computing control output
         omega = self.C_p + self.C_i + self.C_d
+
+        #rospy.loginfo("C_i = %s" % self.C_i)
         
         
         if omega>omegasat:
@@ -98,74 +102,50 @@ class ControllerNode(DTROS):
         stoptime = 28.0
         t0 = time.time()
         i=0
-        keyboard_control_flag = False
+        
+        #wait for data to be published
+        wait = rospy.Rate(0.05)
+        wait.sleep()
+
+        rospy.logwarn("Hallo --------------------")
         
         while  not rospy.is_shutdown():
 
-            while self.state_var == "LANE_FOLLOWING":
-                #computing dt for I-part of controller
-                told = tnew
-                tnew = time.time()
-                dt = tnew-told
+
             
-                '''
-                #stop programm once a certain time has passed (for experiments, not meant for normal usage)
-                if tnew-t0>stoptime:
-                    rospy.logwarn("Time's up!!!")
-                    rospy.signal_shutdown("Ende gut, alles gut")
-                    self.custom_shutdown()
-                '''
+            #computing dt for I-part of controller
+            told = tnew
+            tnew = time.time()
+            dt = tnew-told
+
+            #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
+            self.omega = self.getomega(self.dist,self.tist,dt)
+
+            #def. motor commands that will be published
+            car_cmd_msg.header.stamp = rospy.get_rostime()
+            car_cmd_msg.vel_left = self.vref + self.L * self.omega
+            car_cmd_msg.vel_right = self.vref - self.L * self.omega
+            #car_cmd_msg.v = self.vref
+            #car_cmd_msg.omega = -self.omega
+
+            self.pub_car_cmd.publish(car_cmd_msg)
+
+            #rospy.loginfo("HAllo")
+
+            #printing messages to verify that program is working correctly 
+            #i.ei if dist and tist are always zero, then there is probably no data from the lane_pose
+            message1 = self.dist
+            message2 = self.omega
+            message3 = self.tist
+            message4 = dt
+
             
-
-                #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
-                self.omega = self.getomega(self.dist,self.tist,dt)
-
-                #car_cmd_msg.omega = self.omega
-                #car_cmd_msg.v = self.vref
-                #car_cmd_msg.header = self.header
-
-                #def. motor commands that will be published
-                car_cmd_msg.header.stamp = rospy.get_rostime()
-                car_cmd_msg.vel_left = self.vref + self.L * self.omega
-                car_cmd_msg.vel_right = self.vref - self.L * self.omega
-
-                self.pub_car_cmd.publish(car_cmd_msg)
-
-                #rospy.loginfo("HAllo")
-
-                #printing messages to verify that program is working correctly 
-                #i.ei if dist and tist are always zero, then there is probably no data from the lane_pose
-                message1 = self.dist
-                message2 = self.omega
-                message3 = self.tist
-                message4 = dt
-
-                #rospy.loginfo(tnew-t0)
-
-                #message5 = self.state_var
-
-                #rospy.loginfo('d: %s' % message1)
-                #rospy.loginfo('phi: %s' % message3)
-                #rospy.loginfo('dt: %s' % message4)
-                #rospy.loginfo("state: %s" % message5)
-
-                keyboard_control_flag = True
-            
-                rate.sleep()
-            
-            if keyboard_control_flag == True:
-                car_cmd_msg.header.stamp = rospy.get_rostime()
-                car_cmd_msg.vel_left = 0
-                car_cmd_msg.vel_right = 0
-                self.pub_car_cmd.publish(car_cmd_msg)
-                keyboard_control_flag = False
-
             rate.sleep()
 
     #shutdown procedure, stopping motor movement etc.
     def custom_shutdown(self):
         stop_msg = WheelsCmdStamped()
-        stop_msg.header.stamp = rospy.get_rostime()
+        stop_msg.header.stamp = rospy.Time.now()
         stop_msg.vel_left = 0.0
         stop_msg.vel_right = 0.0
 
@@ -180,12 +160,10 @@ class ControllerNode(DTROS):
         self.tist = pose.phi
         #self.header = pose.header
         message = pose.d
-        rospy.loginfo('d =  %s' % message)
-
-    def state(self,state_msg):
-        self.state_var = state_msg.state
-        rospy.loginfo("state message received")
-
+        #rospy.loginfo('d =  %s' % message)
+        delay = rospy.Time.now() - pose.header.stamp
+        delay_float = delay.secs + float(delay.nsecs)/1e9    
+        rospy.loginfo('delay [s] =  %s' % delay_float)  
 
 
 if __name__ == "__main__":

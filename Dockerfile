@@ -1,5 +1,5 @@
 # parameters
-ARG REPO_NAME="template-ros-core"
+ARG REPO_NAME="marschla-ros-core"
 
 # ==================================================>
 # ==> Do not change this code

@@ -1,6 +1,6 @@
 <launch>
 	<arg name="pkg_name" default="marschla_lane_following"/>
-	<arg name="node_name" default="PID"/>
+	<arg name="node_name" default="PID_"/>
 	<arg name="veh" default="$(env VEHICLE_NAME)"/>
 
 	<include file="$(find duckietown_demos)/launch/master.launch">
@@ -10,7 +10,7 @@
 
 		<arg name="param_file_name" value="default"/>
 
-		<arg name="fsm" value="true"/>
+		<arg name="fsm" value="false"/>
 		<arg name="/fsm/logic_gate" value="false"/>
 
 		<arg name="anti_instagram" value="true"/>

@@ -19,7 +19,7 @@ class ControllerNode(DTROS):
         #self.pub_omega = self.publisher(str(os.environ['VEHICLE_NAME'])+"/kinematics_node/velocity", Twist2DStamped, queue_size=1)
         
         #subscriber
-        self.sub_pose = rospy.Subscriber("marschla/lane_filter_node/lane_pose", LanePose, self.control, queue_size=1)
+        self.sub_pose = rospy.Subscriber("marschla/lane_filter_node/lane_pose", LanePose, self.control, "lane_filter", queue_size=1)
         
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
@@ -42,6 +42,8 @@ class ControllerNode(DTROS):
 
         #structural paramters of duckiebot
         self.L = 0.05      #length from point A to wheels [m]
+
+        self.msg_received = False
 
 
     #moving avarge filter data is a 3x1 array, which includes the past three error values
@@ -106,44 +108,38 @@ class ControllerNode(DTROS):
         tnew = time.time()
         t0=tnew
         stoptime = 100.0
+
         while not rospy.is_shutdown():
-            #computing dt for I and D-part of controller
-            told = tnew
-            tnew = time.time()
-            dt = tnew-told
 
-            '''
-            #stop programm once a certain time has passed (for experiments, not meant for normal usage)
-            if tnew-t0>stoptime:
-                rospy.logwarn("Time's up!!!")
-                rospy.signal_shutdown("Ende gut, alles gut")
-                self.custom_shutdown()
-            '''
+            if self.msg_received == True:
+                #computing dt for I and D-part of controller
+                told = tnew
+                tnew = time.time()
+                dt = tnew-told
 
-            phiref = self.getphiref(self.dist)
-            self.omega = self.getomega(phiref,self.phiist,dt)
+                phiref = self.getphiref(self.dist)
+                self.omega = self.getomega(phiref,self.phiist,dt)
 
             
 
-            #def. motor commands that will be published
-            car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = self.vref + self.L * self.omega
-            car_cmd_msg.vel_right = self.vref - self.L * self.omega
+                #def. motor commands that will be published
+                car_cmd_msg.header.stamp = rospy.get_rostime()
+                car_cmd_msg.vel_left = self.vref + self.L * self.omega
+                car_cmd_msg.vel_right = self.vref - self.L * self.omega
 
-            self.pub_wheels_cmd.publish(car_cmd_msg)
+                self.pub_wheels_cmd.publish(car_cmd_msg)
 
-            #printing messages to verify that program is working correctly 
-            #i.ei if dist and tist are always zero, then there is probably no data from the lan_pose
-            message1 = self.dist
-            message2 = self.omega
-            message3 = self.phiist
-            message4 = phiref
-            message5 = tnew-t0
+                #printing messages to verify that program is working correctly 
+                #i.ei if dist and tist are always zero, then there is probably no data from the lan_pose
+                message1 = self.dist
+                message2 = self.omega
+                message3 = self.phiist
+                message4 = phiref
 
-            #rospy.loginfo('d: %s' % message1)
-            #rospy.loginfo('phi: %s' % message3)
-            #rospy.loginfo('phiref: %s' % message4)
-            rospy.loginfo(message5)
+                #rospy.loginfo('d: %s' % message1)
+                #rospy.loginfo('phi: %s' % message3)
+                #rospy.loginfo('phiref: %s' % message4)
+                #rospy.loginfo(message2)
 
             rate.sleep()
 
@@ -165,18 +161,14 @@ class ControllerNode(DTROS):
         self.phiist = pose.phi
         #updating our estimate of phi
         self.phiest = pose.phi
-        message = "hello"
-        rospy.loginfo('d =  %s' % message)
+        #message = "hello"
+        #rospy.loginfo('d =  %s' % message)
+        self.msg_received = True
+        delay = rospy.Time.now() - pose.header.stamp
+        delay_float = delay.secs + float(delay.nsecs)/1e9    
+        rospy.loginfo('delay [s] =  %s' % delay_float)  
         
-        '''
-        self.mtime = time.time()
-        dt = self.mtime-self.mtimeold
-        self.mtimeold = self.mtime
 
-        msg = dt
-        rospy.logwarn("dt= %s" % msg)
-        self.time_arr.append(dt)
-        '''
 
     #computing avg. frequ of camera
     def save(self):
